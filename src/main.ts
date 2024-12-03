@@ -294,43 +294,56 @@ function updateCacheVisibility(playerPosition: leaflet.LatLng) {
   });
 }
 
-function updatePopupContent(popupDiv: HTMLDivElement, cell: Cell) {
+function updatePopupContent(popupDiv: HTMLDivElement, cell: Cell): void {
+  popupDiv.innerHTML = generatePopupHTML(cell); // Only updates the HTML now
+  bindPopupEvents(popupDiv, cell); // Delegates event setup
+}
+
+function generatePopupHTML(cell: Cell): string {
   const cache = caches.get(`${cell.i},${cell.j}`);
-  if (cache) {
-    const coinsHTML = cache.coins
-      .map((coin) =>
-        `<button id="collect-${coin.serial}">Collect Coin #${coin.serial}</button>`
-      )
-      .join("<br>");
-
-    popupDiv.innerHTML = `    
-      <div>Cache ${getCachePosition(cell.i, cell.j).lat.toFixed(6)}:${
-      getCachePosition(cell.i, cell.j).lng.toFixed(6)
-    }</div>
-      <div>${coinsHTML}</div>
-      <button id="deposit" ${
-      collectedCoins.length === 0 ? "disabled" : ""
-    }>Deposit Coin</button> 
-    `;
-
-    // event listeners for each coin's collect button
-    cache.coins.forEach((coin) => {
-      popupDiv.querySelector<HTMLButtonElement>(`#collect-${coin.serial}`)!
-        .addEventListener("click", () => {
-          collect(cell, coin.serial);
-          updatePopupContent(popupDiv, cell); // update popup content after collecting a coin
-        });
-    });
-
-    // event listener for deposit button
-    popupDiv.querySelector<HTMLButtonElement>("#deposit")!.addEventListener(
-      "click",
-      () => {
-        deposit(cell);
-        updatePopupContent(popupDiv, cell); // update popup after depositing a coin
-      },
-    );
+  if (!cache) {
+    return "<div>No Cache Found</div>";
   }
+
+  const coinsHTML = cache.coins
+    .map((coin) =>
+      `<button id="collect-${coin.serial}">Collect Coin #${coin.serial}</button>`
+    )
+    .join("<br>");
+
+  const depositButton = `<button id="deposit" ${
+    collectedCoins.length === 0 ? "disabled" : ""
+  }>Deposit Coin</button>`;
+
+  return `
+    <div>Cache ${getCachePosition(cell.i, cell.j).lat.toFixed(6)}:${
+    getCachePosition(cell.i, cell.j).lng.toFixed(6)
+  }</div>
+    <div>${coinsHTML}</div>
+    ${depositButton}
+  `;
+}
+
+function bindPopupEvents(popupDiv: HTMLDivElement, cell: Cell): void {
+  const cache = caches.get(`${cell.i},${cell.j}`);
+  if (!cache) return;
+
+  cache.coins.forEach((coin) => {
+    popupDiv
+      .querySelector<HTMLButtonElement>(`#collect-${coin.serial}`)!
+      .addEventListener("click", () => {
+        collect(cell, coin.serial);
+        updatePopupContent(popupDiv, cell); // update popup content after collecting a coin
+      });
+  });
+
+  popupDiv.querySelector<HTMLButtonElement>("#deposit")!.addEventListener(
+    "click",
+    () => {
+      deposit(cell);
+      updatePopupContent(popupDiv, cell); // update popup after depositing a coin
+    },
+  );
 }
 
 // collect coin function
